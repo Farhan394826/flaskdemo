@@ -13,7 +13,7 @@ def home():
 
 @app.route('/about')
 def about():
-    return "I am still working on this"
+    return render_template("about.html")
 
 
 @app.route('/search', methods=['POST', 'GET'])
@@ -26,7 +26,7 @@ def search():
 
 @app.route('/results')
 def results():
-    search_term = session['search_term']
+    search_term = session.get('search_term', '')
     page = get_page(search_term)
     return render_template("results.html", page=page)
 
@@ -35,19 +35,15 @@ def get_page(search_term):
     try:
         page = wikipedia.page(search_term)
     except wikipedia.exceptions.PageError:
-        # no such page, return a random one
         page = wikipedia.page(wikipedia.random())
-    except wikipedia.exceptions.DisambiguationError:
-        # this is a disambiguation page, get the first real page (close enough)
-        page_titles = wikipedia.search(search_term)
-        # sometimes the next page has the same name (different caps), so don't try the same again
-        if page_titles[1].lower() == page_titles[0].lower():
-            title = page_titles[2]
+    except wikipedia.exceptions.DisambiguationError as e:
+        page_titles = e.options
+        if len(page_titles) > 1:
+            page = wikipedia.page(page_titles[1])
         else:
-            title = page_titles[1]
-        page = get_page(wikipedia.page(title))
+            page = wikipedia.page(wikipedia.random())
     return page
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
